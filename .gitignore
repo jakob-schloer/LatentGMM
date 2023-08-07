@@ -1,6 +1,6 @@
 # Custom
 data/**
-#output/**
+output/**
 models/**
 ckpts/**
 slurm-*
