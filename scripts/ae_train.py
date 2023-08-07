@@ -23,11 +23,10 @@ from latgmm.model import ae
 import latgmm.geoplot as gpl
 
 PATH = os.path.dirname(os.path.abspath(__file__))
-plt.style.use(PATH + "/../../paper.mplstyle")
+plt.style.use(PATH + "/../paper.mplstyle")
 
 # Load data
 # ======================================================================================
-reload(utdata)
 param = dict(
     multivar=False,
     variables=['sst'],
@@ -35,40 +34,33 @@ param = dict(
     timescale='monthly',
     lon_range=[130, -70],
     lat_range=[-31, 32],
-#    lat_range=[-15, 16],
 )
+
+dirpath = "../data/reanalysis/monthly/"
 if (param['multivar'] is False) & (len(param['variables']) == 1):
-    if param['timescale'] == 'monthly':
-        dirpath = "../../data/sst/monthly"
-        param['filenames'] = [
-            dict(name='cobe2',   path=dirpath+"/sst_cobe2_month_1850-2019.nc"),
-            dict(name='ersstv5', path=dirpath+"/sst_ersstv5_month_1854-present.nc"),
-            dict(name='hadisst', path=dirpath+"/sst_hadisst_month_1870-present.nc"),
-            dict(name='oras5',   path=dirpath+"/sst_t300_oras5_1958-2018.nc"),
-            dict(name='godas',   path=dirpath+"/sst_godas_month_1980-present.nc"),
-            dict(name='soda',    path=dirpath+"/sst_SODA_month_1980-2017.nc"),
-            dict(name='era5',    path=dirpath+"/sst_era5_monthly_sp_1959-2021_1x1.nc"),
-            # dict(name='tropflux',path=dirpath+"/sst_tropflux_month_1979-2018.nc"),
-        ]
-        param['splity'] = ['2005-01-01', '2022-01-01']
-    elif param['timescale'] == 'daily':
-        param['filenames'] = [dict(
-            name='era5',
-            path=("../data/sst/daily/sea_surface_temperature_daily_coarse_1950_2021.nc")
-        )]
-    
+    param['filenames'] = [
+        dict(name='COBE2',   path=dirpath+"/COBE/sst_cobe2_month_1850-2019.nc"),
+        dict(name='ErSSTv5', path=dirpath+"/ERSSTv5/sst_ersstv5_month_1854-present.nc"),
+        dict(name='HadISST', path=dirpath+"/HadISST/sst_hadisst_month_1870-present.nc"),
+        dict(name='ORAS5',   path=dirpath+"/ORAS5/oceanvars_ORAS5_1x1.nc"),
+        dict(name='GODAS',   path=dirpath+"/GODAS/sst_godas_month_1980-present.nc"),
+        dict(name='SODA',    path=dirpath+"/SODA/sst_SODA_month_1980-2017.nc"),
+        dict(name='ERA5',    path=dirpath+"/ERA5/sea_surface_temperature_era5_monthly_sp_1940-2022_1.0x1.0.nc"),
+        dict(name='CERA-20c',path=dirpath+"/CERA-20C/sst_cera20c_1901-2009_r1x1.nc"),
+    ]
+    param['splity'] = ['2005-01-01', '2022-01-01']
 elif param['multivar'] & (param['timescale'] == 'monthly'):
     param['filenames']=[
-        dict(name='soda',  path=f"../../data/multivar/oceanvars_SODA_1x1.nc"),
-        dict(name='godas', path=f"../../data/multivar/oceanvars_GODAS_1x1.nc"),
-        dict(name='oras5', path=f"../../data/multivar/oceanvars_ORAS5_1x1.nc")
+        dict(name='SODA',     path=dirpath+f"/SODA/oceanvars_SODA_1x1.nc"),
+        dict(name='GODAS',    path=dirpath+f"/CODAS/oceanvars_GODAS_1x1.nc"),
+        dict(name='ORAS5',    path=dirpath+f"/ORAS5/oceanvars_ORAS5_1x1.nc"),
+        dict(name='CERA-20c', path=dirpath+f"/CERA-20C/oceanvars_CERA20C_1x1.nc"),
     ]
-    param['splity']=['2013-01-01', '2022-01-01']
 else:
     raise ValueError(f"No data are loaded due to specified timescale and variables!")
 
 param['detrend_from'] = '1950'
-param['normalization'] = 'zscore'
+param['normalization'] ='zscore'
 
 data = utdata.load_data(**param)
 train_loader = data['train_loader']
@@ -185,7 +177,7 @@ for datapoint in data['train_loader']:
 # ======================================================================================
 param['lr'] = 0.0001
 param['postfix'] = ''
-param['path'] = "../../output/reanalysis/ae/ssta/"
+param['path'] = "../output/ae/"
 param['epochs'] = 50
 criterion = lambda input, target: torch.mean((input - target)**2)
 optimizer = torch.optim.Adam(model.parameters(), lr=param['lr'])

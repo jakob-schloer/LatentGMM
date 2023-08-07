@@ -51,7 +51,8 @@ Put your datafiles in the ``./data`` folder. The location of the files are:
         │   └── oceanvars_ORAS5_1x1.nc \
         └── SODA \
             ├── oceanvars_SODA_1x1.nc \
-            └── sst_SODA_month_1980-2017.nc \
+            └── sst_SODA_month_1980-2017.nc
+
 
 
 

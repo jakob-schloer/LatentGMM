@@ -19,12 +19,12 @@
 # <https://www.gnu.org/licenses/>.
 #
 # --------------------------------------------------------------------
-
+import os
 import xarray as xr
-# import datetime as dt
 import numpy as np
-# import pandas as pd
 from scipy import signal, fft
+
+PATH = os.path.dirname(os.path.abspath(__file__))
 
 
 def anomalies(da):
@@ -62,7 +62,7 @@ def filter(da, ftype="LF"):
 if __name__ == "__main__":
     # load data
     print("load data ...")
-    FN = "era5_u10m_1940_2021_5N5S_130E80W_1deg.nc"
+    FN = PATH + "/../data/reanalysis/6-hourly/ERA5/era5_u10m_1940_2021_5N5S_130E80W_1deg.nc"
     ds = xr.open_dataset(FN)
     u10 = ds.u10
 
