@@ -9,7 +9,7 @@ import xarray as xr
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-import climvae.utils.preproc as utpp
+import latgmm.utils.preproc as utpp
 PATH = os.path.dirname(os.path.abspath(__file__))
 
 

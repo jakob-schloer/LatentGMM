@@ -11,8 +11,8 @@ import cartopy as ctp
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-from climvae.utils import preproc
-from climvae.model import utils
+from latgmm.utils import preproc
+from latgmm.model import utils
 
 PATH = os.path.dirname(os.path.abspath(__file__))
 plt.style.use(PATH + "/../paper.mplstyle")

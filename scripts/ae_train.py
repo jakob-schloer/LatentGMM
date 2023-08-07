@@ -18,9 +18,9 @@ import seaborn as sns
 from sklearn import mixture, decomposition
 from importlib import reload
 
-from climvae.utils import utdata 
-from climvae.model import ae 
-import climvae.vaeplot as vpl
+from latgmm.utils import utdata 
+from latgmm.model import ae 
+import latgmm.geoplot as gpl
 
 PATH = os.path.dirname(os.path.abspath(__file__))
 plt.style.use(PATH + "/../../paper.mplstyle")

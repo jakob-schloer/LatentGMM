@@ -5,7 +5,7 @@ from torch import batch_norm, nn
 import numpy as np
 import pickle
 
-import climvae.model.utils as ut
+import latgmm.model.utils as ut
 
 class BaseAE(nn.Module):
     """Auto encoder.

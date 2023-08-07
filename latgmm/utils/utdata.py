@@ -6,8 +6,8 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 
-from climvae.dataset import SpatialData, MultiVarSpatialData
-from climvae.utils import utdata, utenso, preproc 
+from latgmm.utils.dataset import SpatialData, MultiVarSpatialData
+from latgmm.utils import utdata, utenso, preproc 
 
 PATH = os.path.dirname(os.path.abspath(__file__))
 

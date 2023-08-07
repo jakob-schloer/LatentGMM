@@ -10,9 +10,9 @@ from sklearn.decomposition import PCA
 import scipy.spatial.distance as dist
 from tqdm import tqdm
 
-from climvae.utils import preproc, utdata, utstats
-from climvae.utils.pca import SpatioTemporalPCA
-from climvae.dataset import SpatialData
+from latgmm.utils import preproc, utdata, utstats
+from latgmm.utils.eof import SpatioTemporalPCA
+from latgmm.utils.dataset import SpatialData
 
 PATH = os.path.dirname(os.path.abspath(__file__))
 

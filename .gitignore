@@ -1,6 +1,6 @@
 # Custom
-data/reanalysis/**
-#output/**
+data/**
+output/**
 models/**
 ckpts/**
 slurm-*

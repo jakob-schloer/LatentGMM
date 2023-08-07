@@ -1,0 +1,26 @@
+name: latgmmenv
+channels:
+  - conda-forge
+dependencies:
+  - pip
+  - python[version='>=3.8']
+  - jupyter
+  - ipython
+  - multiprocess
+  - joblib
+  - tqdm
+  - numpy
+  - xarray
+  - netcdf4
+  - pandas
+  - scipy
+  - rpy2
+  - matplotlib
+  - cartopy
+  - nc-time-axis
+  - seaborn
+  - xlrd
+  - scikit-learn
+  - pytorch
+  - cudatoolkit=11.3
+  - torchvision

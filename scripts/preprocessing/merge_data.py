@@ -4,7 +4,7 @@ import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 
-from climvae.utils import preproc
+from latgmm.utils import preproc
 
 PATH = os.path.dirname(os.path.abspath(__file__))
 

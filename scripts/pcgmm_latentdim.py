@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn import mixture, decomposition
 
-from climvae.utils import utenso, preproc, eof, utdata, utstats, metric
-import climvae.vaeplot as vpl
+from latgmm.utils import utenso, preproc, eof, utdata, utstats, metric
+import latgmm.geoplot as gpl
 
 PATH = os.path.dirname(os.path.abspath(__file__))
 plt.style.use(PATH + "/../../paper.mplstyle")
@@ -211,7 +211,7 @@ ax.set_xlabel('k')
 ax.set_yticks(rank_bic['eof'])
 ax.set_ylabel('# of EOFs')
 
-vpl.enumerate_subplots(axs, pos_x=-.2, pos_y=1.05, fontsize=10)
+gpl.enumerate_subplots(axs, pos_x=-.2, pos_y=1.05, fontsize=10)
 
 # %%
 fig.savefig(PATH + "/../../output/paperplots/pcgmm_bic.png", 
