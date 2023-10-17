@@ -691,7 +691,7 @@ def get_enso_flavors_cmip(fname_sst, vname='ts', land_area_mask=None, climatolog
 
 
 
-def select_enso_events(ds: xr.Dataset, month_range=[12, 2]):
+def select_enso_events(ds: xr.Dataset, month_range=[12, 2], threshold=0.5):
     """Select enso events from dataset with multible members."""
     x_enso = []
     x_events = []
@@ -700,7 +700,8 @@ def select_enso_events(ds: xr.Dataset, month_range=[12, 2]):
         x_member = ds.isel(time=idx_member)
 
         nino_ids = get_nino_indices(x_member['ssta'], antimeridian=True)
-        enso_classes = get_enso_flavors_N3N4(nino_ids, month_range=month_range)
+        enso_classes = get_enso_flavors_N3N4(nino_ids, month_range=month_range,
+                                             threshold=threshold)
         enso_classes = enso_classes.loc[enso_classes['type'] != 'Normal']
         x_member_enso = []
         x_member_events = []
