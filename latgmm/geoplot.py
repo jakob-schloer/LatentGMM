@@ -75,7 +75,7 @@ def plot_2dgaussian(mu, cov, p=0.5, ax=None, **kwargs):
     angle = 180 * angle / np.pi  # convert to degrees
     v = 2.0 * np.sqrt(2.0) * np.sqrt(v)
     ell = mpl.patches.Ellipse(
-        mu, v[0], v[1], 180 + angle, **kwargs
+        mu, v[0], v[1], angle=180 + angle, **kwargs
     )
 
 #    ell.set_clip_box(ax.bbox)

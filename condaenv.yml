@@ -1,4 +1,4 @@
-name: latgmmenv
+name: gmmenv
 channels:
   - conda-forge
 dependencies:
