@@ -8,6 +8,14 @@ from tqdm import tqdm
 from joblib import Parallel, delayed
 
 
+def lon_to_180(longitudes):
+    """Convert longitudes from [0, 360] to [-180, 180]."""
+    return np.where(longitudes > 180, longitudes - 360, longitudes)
+
+def lon_to_360(longitudes):
+    """Convert longitudes from [-180, 180] to [0, 360]."""
+    return np.where(longitudes < 0, longitudes + 360, longitudes)
+
 def save_to_file(xArray, filepath, var_name=None):
     """Save dataset or dataarray to file."""
     if os.path.exists(filepath):

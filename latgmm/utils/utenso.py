@@ -691,7 +691,8 @@ def get_enso_flavors_cmip(fname_sst, vname='ts', land_area_mask=None, climatolog
 
 
 
-def select_enso_events(ds: xr.Dataset, month_range=[12, 2], threshold=0.5):
+def select_enso_events(ds: xr.Dataset, month_range=[12, 2], threshold=0.5,
+                       include_normal=False):
     """Select enso events from dataset with multible members."""
     x_enso = []
     x_events = []
@@ -702,16 +703,18 @@ def select_enso_events(ds: xr.Dataset, month_range=[12, 2], threshold=0.5):
         nino_ids = get_nino_indices(x_member['ssta'], antimeridian=True)
         enso_classes = get_enso_flavors_N3N4(nino_ids, month_range=month_range,
                                              threshold=threshold)
-        enso_classes = enso_classes.loc[enso_classes['type'] != 'Normal']
+        if not include_normal:
+            enso_classes = enso_classes.loc[enso_classes['type'] != 'Normal']
+
         x_member_enso = []
         x_member_events = []
         times = []
         for i, time_period in enso_classes.iterrows():
-            x_member_events.append(
-                x_member.sel(time=slice(time_period['start'], time_period['end'])).mean(dim='time')
-            )
             x_member_enso.append(
                 x_member.sel(time=slice(time_period['start'], time_period['end']))
+            )
+            x_member_events.append(
+                x_member.sel(time=slice(time_period['start'], time_period['end'])).mean(dim='time')
             )
             times.append(time_period['start'])
 
