@@ -703,6 +703,8 @@ def select_enso_events(ds: xr.Dataset, month_range=[12, 2], threshold=0.5,
         nino_ids = get_nino_indices(x_member['ssta'], antimeridian=True)
         enso_classes = get_enso_flavors_N3N4(nino_ids, month_range=month_range,
                                              threshold=threshold)
+
+        enso_classes = enso_classes.loc[~np.isnan(enso_classes['N3'])]
         if not include_normal:
             enso_classes = enso_classes.loc[enso_classes['type'] != 'Normal']
 
@@ -710,9 +712,9 @@ def select_enso_events(ds: xr.Dataset, month_range=[12, 2], threshold=0.5,
         x_member_events = []
         times = []
         for i, time_period in enso_classes.iterrows():
-            x_member_enso.append(
-                x_member.sel(time=slice(time_period['start'], time_period['end']))
-            )
+            buff = x_member.sel(time=slice(time_period['start'], time_period['end']))
+            buff = buff.assign_coords(enso=('time', len(buff['time']) * [time_period['type']]))
+            x_member_enso.append(buff)
             x_member_events.append(
                 x_member.sel(time=slice(time_period['start'], time_period['end'])).mean(dim='time')
             )
@@ -721,7 +723,8 @@ def select_enso_events(ds: xr.Dataset, month_range=[12, 2], threshold=0.5,
         x_member_events = xr.concat(x_member_events, dim=pd.Index(times, name='time'))
         x_member_enso = xr.concat(x_member_enso, dim='time')
 
-        x_member_events = x_member_events.assign_coords(member=('time', len(x_member_events['time']) * [member]))
+        x_member_events = x_member_events.assign_coords(member=('time', len(x_member_events['time']) * [member]),
+                                                        enso=('time', enso_classes['type'].values))
         x_member_enso = x_member_enso.assign_coords(member=('time', len(x_member_enso['time']) * [member]))
 
         x_events.append(x_member_events)
