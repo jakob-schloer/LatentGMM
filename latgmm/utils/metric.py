@@ -79,6 +79,19 @@ def fraction_unexplained_variance(X, Y):
 
     return fuv
 
+
+def bic(gmm, X, n_additional_parameters=0):
+    """ Bayesian Information Criterion for GMMs including additional parameters.
+
+    Args: 
+        gmm (sklearn.mixture.GaussianMixture): The GMM to compute the BIC for.
+        X (np.ndarray): The input samples of shape (n_samples, n_dimensions).
+    
+    Returns:
+        bic (float) : The lower the better.
+    """
+    n_parameters = gmm._n_parameters() + n_additional_parameters
+    return -2 * gmm.score(X) * X.shape[0] + n_parameters * np.log(X.shape[0])
     
     
     

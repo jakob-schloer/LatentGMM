@@ -453,56 +453,83 @@ def latent_distribution_matrix(latent_sample, plot_type='density', axs_dic=None,
     return axs_dic
 
 
-def matrix(mat_corr, pick_x=None, pick_y=None,
-           label_x=None, label_y=None,
-           ax=None, color='BrBG',
-           vmin=-1, vmax=1,
-           cbar_kw=dict(extend='both', orientation='horizontal',
-                        label='correlation')
-           ):
-    """Plot correlation matrix.
+def plot_matrix(da: xr.DataArray, xcoord:str, ycoord:str, ax: plt.axes=None,
+                vmin: float = None, vmax: float = None, eps: float = 0.1,   
+                cmap: str ='RdBu_r', centercolor: str = None,
+                bar: str = 'discrete', add_bar: bool=True, 
+                kwargs_pl: dict = None,
+                kwargs_cb: dict = dict(orientation='horizontal', shrink=0.8, extend='both'),
+             ) -> dict:
+    """Plot matrix colormap using pcolormesh.
 
     Args:
-        mat_corr ([type]): [description]
-        pick_x ([type], optional): [description]. Defaults to None.
-        pick_y ([type], optional): [description]. Defaults to None.
-        label_x ([type], optional): [description]. Defaults to None.
-        label_y ([type], optional): [description]. Defaults to None.
-        ax ([type], optional): [description]. Defaults to None.
-        vmin (int, optional): [description]. Defaults to -1.
-        vmax (int, optional): [description]. Defaults to 1.
-        color (str, optional): [description]. Defaults to 'BrBG'.
-        cbar_kw (dict, optional): Arguments to plt.colorbar. 
+        da (xr.DataArray): Dataarray 
+        xcoord (str): Coordinates of x.
+        ycoord (str): Coordinates of y.
+        ax (plt.axes, optional): _description_. Defaults to None.
+        vmin (float, optional): _description_. Defaults to None.
+        vmax (float, optional): _description_. Defaults to None.
+        eps (float, optional): _description_. Defaults to 0.1.
+        cmap (str, optional): _description_. Defaults to 'RdBu_r'.
+        centercolor (str, optional): _description_. Defaults to None.
+        bar (str, optional): _description_. Defaults to 'discrete'.
+        add_bar (bool, optional): _description_. Defaults to True.
+        kwargs_pl (dict, optional): _description_. Defaults to dict().
+        kwargs_cb (dict, optional): _description_. Defaults to dict(orientation='horizontal', shrink=0.8, extend='both').
+
+    Raises:
+        ValueError: _description_
 
     Returns:
-        im (plt.imshow): [description]
+        _type_: _description_
     """
+    # create figure
     if ax is None:
         fig, ax = plt.subplots()
+    
+    if kwargs_pl is None:
+        kwargs_pl = dict()
+        
+    # Select colormap
+    if bar == 'continuous':
+        cmap = plt.get_cmap(cmap)
+        kwargs_pl['vmin'] = vmin 
+        kwargs_pl['vmax'] = vmax
 
-    if pick_y is not None and pick_x is not None:
-        corr = mat_corr[pick_x, :].copy()
-        corr = corr[:, pick_y]
-    elif pick_x is not None:
-        corr = mat_corr[pick_x, :]
-    elif pick_y is not None:
-        corr = mat_corr[:, pick_y]
+    elif bar == 'discrete':
+        if 'norm' not in kwargs_pl:
+            eps = (vmax-vmin)/10 if eps is None else eps
+            bounds = np.arange(vmin, vmax+eps-1e-5, eps)
+            # Create colormap
+            n_colors = len(bounds)+1
+            cmap = plt.get_cmap(cmap, n_colors)
+            colors = np.array([mpl.colors.rgb2hex(cmap(i)) for i in range(n_colors)])
+            # Set center of colormap to specific color
+            if centercolor is not None:
+                idx = [len(colors) // 2 - 1, len(colors) // 2]
+                colors[idx] = centercolor 
+            cmap = mpl.colors.ListedColormap(colors)
+            kwargs_pl['norm'] = mpl.colors.BoundaryNorm(bounds, ncolors=cmap.N, extend='both')
+        else:
+            cmap = plt.get_cmap(cmap)
     else:
-        corr = mat_corr
+        raise ValueError(f"Specified bar={bar} is not defined!")
 
-    cmap = plt.get_cmap(color)
-    im = ax.imshow(corr, vmin=vmin, vmax=vmax, aspect='auto', cmap=cmap)
+    # plot map
+    im = ax.pcolormesh(
+        da[xcoord], da[ycoord], da.data,
+        cmap=cmap, **kwargs_pl
+    )
 
-    cbar = plt.colorbar(im, ax=ax, **cbar_kw)
+    # set colorbar
+    if add_bar:
+        if 'label' not in list(kwargs_cb.keys()):
+            kwargs_cb['label'] = da.name
+        cbar = plt.colorbar(im, ax=ax, **kwargs_cb)
+    else:
+        cbar = None
 
-    if label_x is not None:
-        ax.set_xticks(np.arange(0, len(label_x)))
-        ax.set_xticklabels(label_x)
-    if label_y is not None:
-        ax.set_yticks(np.arange(0, len(label_y)))
-        ax.set_yticklabels(label_y)
-
-    return im
+    return {'ax': ax, "im": im, 'cb': cbar}
 
 
 def gmm_sklearn(gmm, X, y=None, pca=None, ax=None, y_lookup=None,

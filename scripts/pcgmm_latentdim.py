@@ -25,46 +25,27 @@ plt.style.use(PATH + "/../paper.mplstyle")
 # %%
 # Load data
 # ======================================================================================
-data_config = dict(
-    multivar=False,
-    variables=['sst'],
-    source='reanalysis',
-    timescale='monthly',
-    lon_range=[130, -70],
-    lat_range=[-31, 32],
-)
-dirpath = "../data/reanalysis/monthly/"
-if (data_config['multivar'] is False) & (len(data_config['variables']) == 1):
-    data_config['filenames'] = [
-        dict(name='COBE2',   path=dirpath+"/COBE/sst_cobe2_month_1850-2019.nc"),
-        dict(name='ErSSTv5', path=dirpath+"/ERSSTv5/sst_ersstv5_month_1854-present.nc"),
-        dict(name='HadISST', path=dirpath+"/HadISST/sst_hadisst_month_1870-present.nc"),
-        dict(name='ORAS5',   path=dirpath+"/ORAS5/oceanvars_ORAS5_1x1.nc"),
-        dict(name='GODAS',   path=dirpath+"/GODAS/sst_godas_month_1980-present.nc"),
-        dict(name='SODA',    path=dirpath+"/SODA/sst_SODA_month_1980-2017.nc"),
-        dict(name='ERA5',    path=dirpath+"/ERA5/sea_surface_temperature_era5_monthly_sp_1940-2022_1.0x1.0.nc"),
-        dict(name='CERA-20c',path=dirpath+"/CERA-20C/sst_cera20c_1901-2009_r1x1.nc"),
-    ]
-    data_config['splity'] = ['2005-01-01', '2022-01-01']
-elif data_config['multivar'] & (data_config['timescale'] == 'monthly'):
-    data_config['filenames']=[
-        dict(name='SODA',     path=dirpath+f"/SODA/oceanvars_SODA_1x1.nc"),
-        dict(name='GODAS',    path=dirpath+f"/CODAS/oceanvars_GODAS_1x1.nc"),
-        dict(name='ORAS5',    path=dirpath+f"/ORAS5/oceanvars_ORAS5_1x1.nc"),
-        dict(name='CERA-20c', path=dirpath+f"/CERA-20C/oceanvars_CERA20C_1x1.nc"),
-    ]
-else:
-    raise ValueError(f"No data are loaded due to specified timescale and variables!")
+datafile = "../data/reanalysis/monthly/ssta_merged_dataset_3.nc"
+normalization = 'zscore'
 
-data_config['detrend_from'] = '1950'
-data_config['normalization'] ='zscore'
+ds = xr.open_dataset(datafile)
 
-data = utdata.load_data(**data_config)
-ds = data['full']
+# Normalization
+if normalization is not None:
+    attributes = {}
+    ds_norm = []
+    for var in list(ds.data_vars):
+        scaler = preproc.Normalizer(method=normalization)
+        buff = scaler.fit_transform(ds[var])
+        buff.attrs = {'normalizer': scaler}
+        ds_norm.append(buff)
+
+    ds = xr.merge(ds_norm) 
 
 # %%
 # Scan number of eofs
 # ======================================================================================
+reload(metric)
 djf_event = True
 gmm_bic = []
 n_eofs = [2,3,4,5,6]
@@ -132,7 +113,8 @@ for n_components in n_eofs:
                                           covariance_type='full', max_iter=100)
             gmm.fit(z_enso.data.T)
             gmm_bic.append(
-                {'k': k, 'bic': gmm.bic(z_enso.data.T), 'n_eof': n_components}
+                {'k': k, 'bic': gmm.bic(z_enso.data.T), 
+                 'n_eof': n_components, 'parameters': gmm._n_parameters()}
             )
 gmm_bic = pd.DataFrame(gmm_bic)
 # %%
@@ -191,5 +173,69 @@ ax.set_yticks(rank_bic['eof'])
 ax.set_ylabel('# of EOFs')
 
 gpl.enumerate_subplots(axs, pos_x=-.2, pos_y=1.05, fontsize=10)
+
+
+# %%
+# BIC over number of eofs 
+# ======================================================================================
+bic = []
+for i, n in enumerate(n_eofs):
+    temp = gmm_bic.loc[gmm_bic['n_eof'] == n]
+    bic.append(xr.DataArray(
+            data=pd.DataFrame([temp.loc[temp['k']==k].median() for k in temp['k'].unique()])['bic'],
+            coords=dict(k=temp['k'].unique())
+        )
+    )
+bic = xr.concat(bic, dim=pd.Index(n_eofs, name='eof'))
+
+# %%
+# Number of parameters model 
+# ======================================================================================
+params = []
+for i, n in enumerate(n_eofs):
+    temp = gmm_bic.loc[gmm_bic['n_eof'] == n]
+    params.append(xr.DataArray(
+            data=pd.DataFrame([temp.loc[temp['k']==k].mean() for k in temp['k'].unique()])['parameters'],
+            coords=dict(k=temp['k'].unique())
+        )
+    )
+params = xr.concat(params, dim=pd.Index(n_eofs, name='eof'))
+
+# %%
+reload(gpl)
+# Number of parameters and BIC
+# ======================================================================================
+from matplotlib.ticker import ScalarFormatter
+from matplotlib.colors import LogNorm, BoundaryNorm
+fig, axs = plt.subplots(1, 2, figsize=(7, 3.5), sharex=True, sharey=True)
+
+ax = axs[0]
+im = gpl.plot_matrix(params, xcoord='k', ycoord='eof', ax=ax, cmap='viridis',
+                vmin=np.min(params), vmax=np.max(params), eps=25, add_bar=False)
+cbar = plt.colorbar(im['im'], ax=ax, orientation='horizontal',
+                    label='# of parameters', pad=0.17)
+
+ax.set_xticks(params['k'])
+ax.set_xlabel('k')
+ax.set_yticks(params['eof'])
+ax.set_ylabel('# of EOFs')
+
+# Plot log(BIC)
+ax = axs[1]
+logbic = np.log(bic)
+levels = np.linspace(np.min(logbic)-0.06, np.max(logbic), 20)
+cmap = plt.get_cmap('cividis_r', len(levels) +1)
+norm = BoundaryNorm(levels, ncolors=cmap.N, extend='both')
+c = ax.pcolormesh(logbic.k, logbic.eof, logbic, norm=norm, cmap=cmap)
+cbar = plt.colorbar(c, orientation='horizontal', pad=0.17, label='log(BIC)')
+ticks = cbar.ax.get_xticks()
+cbar.set_ticks(ticks=ticks[1::2], labels=[f"{t:.1f}" for t in ticks[1::2]])
+ax.set_xticks(logbic['k'])
+ax.set_xlabel('k')
+
+gpl.enumerate_subplots(axs, pos_x=.0, pos_y=1.05, fontsize=10)
+
+
+plt.savefig("../output/plots/pcgmm_nparams_bic.png", dpi=300, bbox_inches='tight')
 
 # %%
