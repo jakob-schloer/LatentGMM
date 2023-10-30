@@ -13,6 +13,35 @@ from statsmodels.tsa.ar_model import AutoReg
 from tqdm import tqdm
 from joblib import Parallel, delayed
 
+
+
+def linear_regression_params(X, y):
+    """
+    Compute regression parameter between xarray DataArray X and
+    1D time series y using least square method.
+
+        y = alpha + beta * X
+        min ( || X * beta - y ||^2 ) -> X y = beta * X^2
+    
+    Returns:
+        beta (xr.DataArray): Regression coefficient.
+        alpha (xr.DataArray): Intercept.
+    """
+    # Center variables
+    X_anom = X - X.mean(dim='time')
+    y_anom = y - y.mean(dim='time')
+
+    # Compute sums needed for regression coefficiens
+    cov_Xy = (X_anom * y_anom).sum(dim='time')
+    var_X = (X_anom ** 2).sum(dim='time')
+    var_y = (y_anom ** 2).sum(dim='time')
+
+    # Calculate regression coefficient (beta)
+    beta = cov_Xy / var_X
+    alpha = y.mean(dim='time') - beta * X.mean(dim='time')
+
+    return beta, alpha
+
 # Statistical tests for composite analysis
 # ======================================================================================
 

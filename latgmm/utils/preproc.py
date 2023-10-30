@@ -660,116 +660,40 @@ class Normalizer():
             return da_norm * self.std + self.mean
         elif self.method == 'center':
             return da_norm + self.mean
+    
+
+    def to_dict(self):
+        """Save variables to dict."""
+        config = dict(method=self.method)
+        if self.method == 'minmax':
+            config['min']= np.array(self.min)
+            config['max']= np.array(self.max)
+        elif self.method == 'zscore':
+            config['mean']= np.array(self.mean)
+            config['std']= np.array(self.std)
+        elif self.method == 'center':
+            config['mean']= np.array(self.mean)
+
+        return config
 
 
-
-# Deprecated functions
-
-def normalize(da, method='zscore'):
-    """Normalize dataarray by a given method.
-
-    Args:
-        da ([type]): [description]
-        method (str, optional): Normalization method. 'minmax' corresponds to 0-1,
-            and 'zscore' standardizes the data. Defaults to 'zscore'.
-
-    Returns:
-        [type]: [description]
-    """
-    print("Warning: Deprecated function")
-    print(f'Normalize data by {method}!')
-    flatten = da.stack(z=da.dims)
-    if method == 'minmax':
-        min = flatten.min(skipna=True)
-        max = flatten.max(skipna=True)
-        norm_data = (
-            (flatten - min) / (max - min)
-        )
-        attr = dict(norm=method, min=min.data, max=max.data)
-    elif method == 'zscore':
-        mean = flatten.mean(skipna=True)
-        std = flatten.std(skipna=True)
-        norm_data = (
-            (flatten - mean) / std
-        )
-        attr = dict(norm=method, mean=mean.data, std=std.data)
-    else:
-        print(f'Your selected normalization method "{method}" does not exist.')
-
-    norm_data = norm_data.unstack('z')
-    for key, val in attr.items():
-        norm_data.attrs[key] = val
-
-    return norm_data
-
-
-def unnormalize(dmap, attr):
-    """Unnormalize data.
+def normalizer_from_dict(config: dict) -> Normalizer:
+    """Create Normalizer object from dictionary.
 
     Args:
-        dmap (xr.Dataarray): Datamap.
-        attr (dict): Dictionary containing normalization information
-            attr = {'norm': 'minmax' ,'min': , 'max': } 
-            or attr = {'norm': 'zscore' ,'mean': , 'std': } 
+        config (dict): Dictionary with class parameters.
 
     Returns:
-        rec_map (xr.Dataarray): Unnormalized map.
+        Normalizer: Normalizer class object
     """
-    print("Warning: Deprecated function")
-    if 'norm' not in list(attr.keys()):
-        raise ValueError("The given dataarray has not information about its normalization!")
+    normalizer = Normalizer(method=config['method'])
+    if config['method'] == 'minmax':
+        normalizer.min = config['min']  
+        normalizer.max = config['max'] 
+    elif config['method'] == 'zscore':
+        normalizer.mean = config['mean']
+        normalizer.std = config['std'] 
+    elif config['method'] == 'center':
+        normalizer.mean = config['mean']
 
-    if attr['norm'] == 'minmax':
-        rec_map = dmap * (attr['max'] - attr['min']) + attr['min']
-    elif attr['norm'] == 'zscore':
-        rec_map = (dmap * attr['std'] + attr['mean'])
-    else:
-        print(
-            f'Your selected normalization method {attr["norm"]} does not exist.', flush=True)
-
-    return rec_map
-
-
-def normalize_arraywise(da, dim, method='zscore'):
-    """Normalize each array along a given dimension in the dataarray seperately. 
-
-    Args:
-        da (xr.Dataarray): Dataarray to normalize. 
-        dim (str): Dimension name to select arrays from.
-        method (str, optional): Normalization method. Defaults to 'zscore'.
-
-    Returns:
-        da_norm (xr.Dataarray): Normalized dataarray. 
-    """
-    print("Warning: Deprecated function")
-
-    da_norm = []
-    for i, n in enumerate(da[dim].data):
-        buff = normalize(da.isel({dim: i}), method=method)
-        buff = buff.assign_coords({dim: n, **buff.attrs})
-        da_norm.append(buff)
-
-    return xr.concat(da_norm, dim=dim)
-
-
-def unnormalize_arraywise(da_norm, dim):
-    """Normalize each array along a given dimension in the dataarray seperately. 
-
-    Args:
-        da_norm (xr.Dataarray): Previously normalized dataarray. 
-        dim (str): Dimension name to select arrays from.
-
-    Returns:
-        da (xr.Dataarray): Unnormalized dataarray. 
-    """
-    print("Warning: Deprecated function")
-    da = []
-    for i, n in enumerate(da_norm[dim].data):
-        buff = da_norm.isel({dim: i})
-        buff = unnormalize(buff, attr=buff[dim].coords)
-        # Adapt coords
-        buff = buff.drop_vars(list(buff[dim].coords.keys()))
-        buff = buff.assign_coords({dim: n})
-        da.append(buff)
-
-    return xr.concat(da, dim=dim)
+    return normalizer

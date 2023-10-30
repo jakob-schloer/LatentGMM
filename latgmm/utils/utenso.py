@@ -1298,9 +1298,6 @@ def get_weighted_composites(ds: xr.Dataset, f_sst: str, weights: xr.DataArray,
         pvals_class_arr.name = var
         pvals_vars.append(pvals_class_arr)
 
-        # TODO: remove
-        #samples_mean = xr.concat(samples_mean, dim=pd.Index(classes, name='classes'))
-
         composite_vars.append(composite_classes)
         mask_vars.append(mask_classes)
 
