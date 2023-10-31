@@ -955,7 +955,7 @@ def get_unweighted_composites(ds: xr.Dataset, f_sst: str,
                               month_offset: int=0,
                               stattest: str='pos', alpha: float=0.05,
                               null_hypothesis: str='neutral',
-                              n_samples_mean: int=100, n_samples_time: int=12,
+                              n_samples_mean: int=100,
                               serial_data: bool=False, multiple_testing: str='dunn'):
     """Get unweighted ENSO composites for dataarray.
 
@@ -1013,13 +1013,14 @@ def get_unweighted_composites(ds: xr.Dataset, f_sst: str,
 
         # Neutral DJF
         da_null = preproc.select_time_snippets(da, time_snippets_null)
+        n_samples_null = len(da_null['time'])
         composite_null.append(da_null.mean(dim='time', skipna=True))
 
         if stattest in ['ks', 'mw', 'pos']:
             # Sample means from null hypothesis
             samples_null_var = []
             for n in range(n_samples_mean):
-                time_samples = np.random.choice(da_null['time'], size=n_samples_time,
+                time_samples = np.random.choice(da_null['time'], size=n_samples_null,
                                                 replace=True)
                 samples_null_var.append(da_null.sel(
                     time=time_samples).mean(dim='time'))
@@ -1030,7 +1031,6 @@ def get_unweighted_composites(ds: xr.Dataset, f_sst: str,
             samples_null = None
 
         # Mean composites and sign mask
-        samples_mean = []
         composite_flavor_arr = []
         mask_flavor_arr = []
         pvalues_var = []
@@ -1045,19 +1045,17 @@ def get_unweighted_composites(ds: xr.Dataset, f_sst: str,
 
             # Mean
             mean = da_flavor.mean(dim='time', skipna=True)
+            n_samples_flavor = len(da_flavor['time'])
 
             if stattest in ['ks', 'mw']:
                 # Sample means
                 samples_class = []
                 for n in range(n_samples_mean):
-                    time_samples = np.random.choice(da_flavor['time'], size=n_samples_time,
+                    time_samples = np.random.choice(da_flavor['time'], size=n_samples_flavor,
                                                     replace=True)
                     samples_class.append(da_flavor.sel(
                         time=time_samples).mean(dim='time'))
                 samples_class = xr.concat(samples_class, dim='samples')
-
-                # TODO: remove
-                samples_mean.append(samples_class)
 
             if stattest == 'ks':
                 print(f"KS-test for {enso_type}")
@@ -1114,9 +1112,6 @@ def get_unweighted_composites(ds: xr.Dataset, f_sst: str,
         pvalues_var.name = var  
         pvalues_arr.append(pvalues_var)
 
-        # TODO: remove
-        #samples_mean = xr.concat(samples_mean, dim=pd.Index(enso_types, name='classes'))
-
     composites = xr.merge(composite_vars)
     masks = xr.merge(mask_vars)
     composite_null = xr.merge(composite_null)
@@ -1130,7 +1125,7 @@ def get_unweighted_composites(ds: xr.Dataset, f_sst: str,
 
 def get_weighted_composites(ds: xr.Dataset, f_sst: str, weights: xr.DataArray,
                             null_hypothesis: str = 'all', stattest: str = 'ks',
-                            n_samples_time: int = 100, n_samples_mean: int = 100,
+                            n_samples_mean: int = 100,
                             alpha: float = 0.05,
                             multiple_testing: str='dunn', serial_data: bool = False):
     """Create weighted composites and significant mask using conditional probabilities.
@@ -1201,12 +1196,13 @@ def get_weighted_composites(ds: xr.Dataset, f_sst: str, weights: xr.DataArray,
 
         # Null hypothesis
         da_null = preproc.select_time_snippets(da, time_snippets)
+        n_samples_null = len(da_null['time'])
 
         if stattest in ['ks', 'mw', 'pos']:
             # Sample means from null hypothesis
             samples_null_var = []
             for n in range(n_samples_mean):
-                time_samples = np.random.choice(da_null['time'], size=n_samples_time,
+                time_samples = np.random.choice(da_null['time'], size=n_samples_null,
                                                 replace=True)
                 samples_null_var.append(da_null.sel(
                     time=time_samples).mean(dim='time'))
@@ -1237,7 +1233,7 @@ def get_weighted_composites(ds: xr.Dataset, f_sst: str, weights: xr.DataArray,
 
                 samples_class = []
                 for n in range(n_samples_mean):
-                    time_samples = np.random.choice(da['time'], size=n_samples_time,
+                    time_samples = np.random.choice(da['time'], size=len(da['time']),
                                                     replace=True, p=prob_time.data)
                     samples_class.append(
                         da.sel(time=time_samples).mean(dim='time'))
