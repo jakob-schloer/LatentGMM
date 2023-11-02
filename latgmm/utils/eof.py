@@ -68,6 +68,20 @@ def flattened2map(x_flat: np.ndarray, ids_notNaN: xr.DataArray, times: np.ndarra
     return x_map
 
 
+def norths_rule_of_thumb(pca_eigval, n_samples):
+    """Error bar for PCA components.
+
+    Args:
+        pca_eigval (np.ndarray): Eigenvalues of PCA 
+        n_samples (int): Number of datapoints.
+
+    Returns:
+        (np.ndarray): Error of each PCA component. 
+    """
+    norths_rule = pca_eigval * np.sqrt(2/ n_samples)
+    return norths_rule
+
+
 
 class SpatioTemporalPCA:
     """PCA of spatio-temporal data.

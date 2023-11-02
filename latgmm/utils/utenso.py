@@ -956,6 +956,7 @@ def get_unweighted_composites(ds: xr.Dataset, f_sst: str,
                               stattest: str='pos', alpha: float=0.05,
                               null_hypothesis: str='neutral',
                               n_samples_mean: int=100,
+                              n_samples_time: int= None,
                               serial_data: bool=False, multiple_testing: str='dunn'):
     """Get unweighted ENSO composites for dataarray.
 
@@ -1003,37 +1004,20 @@ def get_unweighted_composites(ds: xr.Dataset, f_sst: str,
     else:
         raise ValueError(f"Unknown null hypothesis: {null_hypothesis}")
 
-    composite_vars = []
-    mask_vars = []
+    composite_vars, mask_vars = [], []
     composite_null = []
-    samples_null = []
-    pvalues_arr = []
+    pvalues_arr, samples_null = [], []
     for var in ds.data_vars:
         da = ds[var]
 
         # Neutral DJF
         da_null = preproc.select_time_snippets(da, time_snippets_null)
-        n_samples_null = len(da_null['time'])
         composite_null.append(da_null.mean(dim='time', skipna=True))
-
-        if stattest in ['ks', 'mw', 'pos']:
-            # Sample means from null hypothesis
-            samples_null_var = []
-            for n in range(n_samples_mean):
-                time_samples = np.random.choice(da_null['time'], size=n_samples_null,
-                                                replace=True)
-                samples_null_var.append(da_null.sel(
-                    time=time_samples).mean(dim='time'))
-            samples_null_var = xr.concat(samples_null_var, dim='samples')
-            samples_null_var.name = var
-            samples_null.append(samples_null_var)
-        else:
-            samples_null = None
+        print(f"Neutral years: {len(da_null['time'])}")
 
         # Mean composites and sign mask
-        composite_flavor_arr = []
-        mask_flavor_arr = []
-        pvalues_var = []
+        composite_flavor_arr, mask_flavor_arr = [], []
+        pvalues_var, samples_null_var = [], []
         for i, enso_type in enumerate(enso_types):
             # Composites
             time_snippets = np.array(
@@ -1045,7 +1029,17 @@ def get_unweighted_composites(ds: xr.Dataset, f_sst: str,
 
             # Mean
             mean = da_flavor.mean(dim='time', skipna=True)
-            n_samples_flavor = len(da_flavor['time'])
+            n_samples_flavor = len(da_flavor['time']) if n_samples_time is None else n_samples_time
+
+            if stattest in ['ks', 'mw', 'pos']:
+                # Sample means from null hypothesis
+                samples_null_flavor = []
+                for n in range(n_samples_mean):
+                    time_samples = np.random.choice(da_null['time'], size=n_samples_flavor,
+                                                    replace=True)
+                    samples_null_flavor.append(da_null.sel(time=time_samples).mean(dim='time'))
+                samples_null_flavor = xr.concat(samples_null_flavor, dim='samples')
+                samples_null_var.append(samples_null_flavor)
 
             if stattest in ['ks', 'mw']:
                 # Sample means
@@ -1059,12 +1053,12 @@ def get_unweighted_composites(ds: xr.Dataset, f_sst: str,
 
             if stattest == 'ks':
                 print(f"KS-test for {enso_type}")
-                _, pvals = utstats.kstest_field(samples_class, samples_null_var)
+                _, pvals = utstats.kstest_field(samples_class, samples_null_flavor)
 
             elif stattest == 'mw':
                 print(f"Mannwhitneyu test for {enso_type}")
                 _, pvalues = stats.mannwhitneyu(
-                    samples_class.data, samples_null_var.data,
+                    samples_class.data, samples_null_flavor.data,
                     use_continuity=True, alternative='two-sided',
                     axis=0, method='auto', nan_policy='propagate', keepdims=False
                 )
@@ -1076,7 +1070,7 @@ def get_unweighted_composites(ds: xr.Dataset, f_sst: str,
                 )
             elif stattest == 'pos':
                 print(f"Percentile of score for {enso_type}")
-                X = samples_null_var.stack(z=('lat', 'lon'))
+                X = samples_null_flavor.stack(z=('lat', 'lon'))
                 y = mean.stack(z=('lat', 'lon'))
                 pvalues = xr.ones_like(y) * np.nan
                 for i in tqdm(range(len(y['z']))):
@@ -1112,6 +1106,10 @@ def get_unweighted_composites(ds: xr.Dataset, f_sst: str,
         pvalues_var.name = var  
         pvalues_arr.append(pvalues_var)
 
+        samples_null_var = xr.concat(samples_null_var, dim=pd.Index(enso_types, name='classes'))
+        samples_null_var.name = var  
+        samples_null.append(samples_null_var)
+
     composites = xr.merge(composite_vars)
     masks = xr.merge(mask_vars)
     composite_null = xr.merge(composite_null)
@@ -1125,7 +1123,7 @@ def get_unweighted_composites(ds: xr.Dataset, f_sst: str,
 
 def get_weighted_composites(ds: xr.Dataset, f_sst: str, weights: xr.DataArray,
                             null_hypothesis: str = 'all', stattest: str = 'ks',
-                            n_samples_mean: int = 100,
+                            n_samples_mean: int = 100, n_samples_time: int = None,
                             alpha: float = 0.05,
                             multiple_testing: str='dunn', serial_data: bool = False):
     """Create weighted composites and significant mask using conditional probabilities.
@@ -1185,10 +1183,8 @@ def get_weighted_composites(ds: xr.Dataset, f_sst: str, weights: xr.DataArray,
     print(f"Len of null-times: {len(time_snippets)}")
 
     # Get weighted composites and statistical significance
-    composite_vars = []
-    mask_vars = []
-    samples_null = []
-    pvals_vars = []
+    composite_vars, mask_vars = [], []
+    samples_null, pvals_vars = [], []
     for var in ds.data_vars:
         # Mean and std at each location for standardization
         print(f"Compute mean and stat-test for {var}")
@@ -1196,31 +1192,14 @@ def get_weighted_composites(ds: xr.Dataset, f_sst: str, weights: xr.DataArray,
 
         # Null hypothesis
         da_null = preproc.select_time_snippets(da, time_snippets)
-        n_samples_null = len(da_null['time'])
-
-        if stattest in ['ks', 'mw', 'pos']:
-            # Sample means from null hypothesis
-            samples_null_var = []
-            for n in range(n_samples_mean):
-                time_samples = np.random.choice(da_null['time'], size=n_samples_null,
-                                                replace=True)
-                samples_null_var.append(da_null.sel(
-                    time=time_samples).mean(dim='time'))
-
-            samples_null_var = xr.concat(samples_null_var, dim='sample')
-            samples_null_var.name = f"{var}"
-            samples_null.append(samples_null_var)
-        else:
-            samples_null = None
 
         # Get weighted composites and statistical significance
-        samples_mean = []
-        composite_class_arr = []
-        mask_class_arr = []
-        classes = []
-        pvals_class_arr = []
+        samples_mean, classes = [], []
+        composite_class_arr, mask_class_arr = [], []
+        samples_null_var, pvals_class_arr = []
         for i, k in enumerate(weights['classes'].data):
             weight_class = weights.sel(classes=k)
+            n_samples_class = len(weight_class['time']) if n_samples_time is None else n_samples_time
 
             # Weighted mean
             da_weighted = da.weighted(weight_class)
@@ -1233,13 +1212,23 @@ def get_weighted_composites(ds: xr.Dataset, f_sst: str, weights: xr.DataArray,
 
                 samples_class = []
                 for n in range(n_samples_mean):
-                    time_samples = np.random.choice(da['time'], size=len(da['time']),
+                    time_samples = np.random.choice(da['time'], size=n_samples_class,
                                                     replace=True, p=prob_time.data)
                     samples_class.append(
                         da.sel(time=time_samples).mean(dim='time'))
                 samples_class = xr.concat(samples_class, dim='samples')
 
                 samples_mean.append(samples_class)
+
+            # Sample means from null hypothesis
+            if stattest in ['ks', 'mw', 'pos']:
+                samples_null_class = []
+                for n in range(n_samples_mean):
+                    time_samples = np.random.choice(da_null['time'], size=n_samples_class,
+                                                    replace=True)
+                    samples_null_class.append(da_null.sel(time=time_samples).mean(dim='time'))
+                samples_null_class = xr.concat(samples_null_class, dim='samples')
+                samples_null_var.append(samples_null_class)
 
             if stattest == 'ks':
                 print(f"KS-test for c={k}")
@@ -1285,17 +1274,22 @@ def get_weighted_composites(ds: xr.Dataset, f_sst: str, weights: xr.DataArray,
             composite_class_arr, dim=pd.Index(classes, name='classes')
         )
         composite_classes.name = var
+        composite_vars.append(composite_classes)
+
         mask_classes = xr.concat(
             mask_class_arr, dim=pd.Index(classes, name='classes')
         )
         mask_classes.name = var
+        mask_vars.append(mask_classes)
+
+        if stattest in ['ks', 'mw', 'pos']:
+            samples_null_var = xr.concat(samples_null_var, dim=pd.Index(classes, name='classes'))
+            samples_null_var.name = var
+            samples_null.append(samples_null_var)
 
         pvals_class_arr = xr.concat(pvals_class_arr, dim=pd.Index(classes, name='classes'))
         pvals_class_arr.name = var
         pvals_vars.append(pvals_class_arr)
-
-        composite_vars.append(composite_classes)
-        mask_vars.append(mask_classes)
 
     composites = xr.merge(composite_vars)
     masks = xr.merge(mask_vars)
