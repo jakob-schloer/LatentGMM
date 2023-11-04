@@ -30,7 +30,7 @@ filelist = {
     'ERA5':    dirpath+"/ERA5/sea_surface_temperature_era5_monthly_sp_1940-2022_1.0x1.0.nc",
     'CERA-20c':dirpath+"/CERA-20C/sst_cera20c_1901-2009_r1x1.nc",
 }
-outfile = "../../data/reanalysis/monthly/ssta_merged_dataset_3.nc"
+outfile = "../../data/reanalysis/monthly/ssta_merged_dataset_1.nc"
 
 
 # %%

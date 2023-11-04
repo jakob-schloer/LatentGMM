@@ -1196,7 +1196,7 @@ def get_weighted_composites(ds: xr.Dataset, f_sst: str, weights: xr.DataArray,
         # Get weighted composites and statistical significance
         samples_mean, classes = [], []
         composite_class_arr, mask_class_arr = [], []
-        samples_null_var, pvals_class_arr = []
+        samples_null_var, pvals_class_arr = [], []
         for i, k in enumerate(weights['classes'].data):
             weight_class = weights.sel(classes=k)
             n_samples_class = len(weight_class['time']) if n_samples_time is None else n_samples_time
@@ -1222,9 +1222,11 @@ def get_weighted_composites(ds: xr.Dataset, f_sst: str, weights: xr.DataArray,
 
             # Sample means from null hypothesis
             if stattest in ['ks', 'mw', 'pos']:
+                n_samples_null = len(np.where(weight_class.data > 0.1)[0])
+                print(f"Num of samples for null hypothesis: {n_samples_null}")
                 samples_null_class = []
                 for n in range(n_samples_mean):
-                    time_samples = np.random.choice(da_null['time'], size=n_samples_class,
+                    time_samples = np.random.choice(da_null['time'], size=n_samples_null,
                                                     replace=True)
                     samples_null_class.append(da_null.sel(time=time_samples).mean(dim='time'))
                 samples_null_class = xr.concat(samples_null_class, dim='samples')
@@ -1232,7 +1234,7 @@ def get_weighted_composites(ds: xr.Dataset, f_sst: str, weights: xr.DataArray,
 
             if stattest == 'ks':
                 print(f"KS-test for c={k}")
-                _, pvals = utstats.kstest_field(samples_class, samples_null_var)
+                _, pvals = utstats.kstest_field(samples_class, samples_null_class)
             elif stattest == 'mw':
                 print(f"Mannwhitneyu test for c={k}")
                 _, pvalues = stats.mannwhitneyu(
@@ -1247,7 +1249,7 @@ def get_weighted_composites(ds: xr.Dataset, f_sst: str, weights: xr.DataArray,
                 )
             elif stattest == 'pos':
                 print(f"Percentile of score for c={k}")
-                X = samples_null_var.stack(z=('lat', 'lon'))
+                X = samples_null_class.stack(z=('lat', 'lon'))
                 y = weighted_mean.stack(z=('lat', 'lon'))
                 pvalues = xr.ones_like(y) * np.nan
                 for i in tqdm(range(len(y['z']))):

@@ -25,10 +25,11 @@ plt.style.use(PATH + "/../paper.mplstyle")
 # %%
 # Load data
 # ======================================================================================
-datafile = "../data/reanalysis/monthly/ssta_merged_dataset_3.nc"
+datafile = "../data/reanalysis/monthly/ssta_merged_dataset_1.nc"
 normalization = 'zscore'
 
 ds = xr.open_dataset(datafile)
+ds = ds.sel(lat=slice(-15, 15))
 
 # Normalization
 if normalization is not None:
@@ -46,7 +47,7 @@ if normalization is not None:
 # Scan number of eofs
 # ======================================================================================
 reload(metric)
-djf_event = True
+month_range=[12, 2]
 gmm_bic = []
 n_eofs = [2,3,4,5,6]
 for n_components in n_eofs:
@@ -56,75 +57,56 @@ for n_components in n_eofs:
     print(f"EOFs {n_components}, exp. variance: {np.sum(sppca.explained_variance())}")
 
     # Preselect data for GMM
-    x_enso = []
-    z_enso = []
-    for member in np.unique(ds['member']):
-        idx_member = np.where(ds['member'] == member)[0]
-        x_member = ds.isel(time=idx_member)
-        z_member = pcs.isel(time=idx_member)
-
-        nino_ids = utenso.get_nino_indices(x_member['ssta'], antimeridian=True)
-        enso_classes = utenso.get_enso_flavors_N3N4(nino_ids)
-        enso_classes = enso_classes.loc[enso_classes['type'] != 'Normal']
-        x_member_enso = []
-        z_member_enso = []
-        times = []
-        for i, time_period in enso_classes.iterrows():
-            if djf_event:
-                x_member_enso.append(
-                    x_member.sel(time=slice(time_period['start'], time_period['end'])).mean(dim='time')
-                )
-                z_member_enso.append(
-                    z_member.sel(time=slice(time_period['start'], time_period['end'])).mean(dim='time')
-                )
-            else:
-                x_member_enso.append(
-                    x_member.sel(time=slice(time_period['start'], time_period['end']))
-                )
-                z_member_enso.append(
-                    z_member.sel(time=slice(time_period['start'], time_period['end']))
-                )
-            times.append(time_period['start'])
-
-        if djf_event:
-            x_member_enso = xr.concat(x_member_enso, dim=pd.Index(times, name='time'))
-            z_member_enso = xr.concat(z_member_enso, dim=pd.Index(times, name='time'))
-            assert len(np.unique(x_member_enso.time.dt.year)) == len(x_member_enso.time)
-        else:
-            x_member_enso = xr.concat(x_member_enso, dim='time')
-            z_member_enso = xr.concat(z_member_enso, dim='time')
-
-        x_member_enso = x_member_enso.assign_coords(member=('time', len(x_member_enso['time']) * [member]))
-        x_member_enso = z_member_enso.assign_coords(member=('time', len(z_member_enso['time']) * [member]))
-
-        x_enso.append(x_member_enso)
-        z_enso.append(z_member_enso)
-
-    x_enso = xr.concat(x_enso, dim='time')
-    z_enso = xr.concat(z_enso, dim='time').transpose("eof", 'time')
+    x_enso, x_events = utenso.select_enso_events(ds, month_range=month_range, threshold=0.5)
+    z_enso = xr.DataArray(
+        data=sppca.transform(x_enso),
+        coords={'time': x_enso['time'].data, 'eof': np.arange(1, sppca.n_components+1)}
+    ).assign_coords(member=('time', x_enso['member'].data))
+    z_events = xr.DataArray(
+        data=sppca.transform(x_events),
+        coords={'time': x_events['time'].data, 'eof': np.arange(1, sppca.n_components+1)}
+    ).assign_coords(member=('time', x_events['member'].data))
 
     # ## Gaussian mixture 
-    # ### Scan number of cluster
+    print("Scan number of cluster")
     n_classes = np.arange(1, 10, 1)
-    n_runs = 100
+    n_runs = 50
     for k in n_classes:
         for r in range(n_runs):
             gmm = mixture.GaussianMixture(n_components=k, 
                                           covariance_type='full', max_iter=100)
-            gmm.fit(z_enso.data.T)
+            gmm.fit(z_enso.data)
             gmm_bic.append(
-                {'k': k, 'bic': gmm.bic(z_enso.data.T), 
+                {'k': k, 'bic': gmm.bic(z_enso.data), 
                  'n_eof': n_components, 'parameters': gmm._n_parameters()}
             )
 gmm_bic = pd.DataFrame(gmm_bic)
 # %%
 # Boxplots for each number of eofs
 # ======================================================================================
+clrs = sns.color_palette('magma', len(n_eofs))
 fig, axs = plt.subplots(len(n_eofs), 1, figsize=(5,len(n_eofs)*2), sharex=True)
 for i, n in enumerate(n_eofs):
     temp = gmm_bic.loc[gmm_bic['n_eof'] == n]
-    sns.boxplot(data=temp, x='k', y='bic', ax=axs[i])
+    temp['logbic'] = np.log(temp['bic'])
+    sns.boxplot(data=temp, x='k', y='bic', ax=axs[i], color=clrs[i], fliersize=0.0)
     axs[i].set_title(f"EOFs: {n}")
+
+# %%
+# Boxplots in one plot
+# ======================================================================================
+import matplotlib.patches as mpatches
+clrs = sns.color_palette('cividis', len(n_eofs))
+fig, ax = plt.subplots(1, 1, figsize=(5, 8))
+labels = []
+for i, n in enumerate(n_eofs):
+    temp = gmm_bic.loc[gmm_bic['n_eof'] == n]
+    temp['logbic'] = np.log(temp['bic'])
+    sns.boxplot(data=temp, x='k', y='logbic', ax=ax, color=clrs[i],
+                fliersize=0.0)
+    labels.append(mpatches.Patch(color=clrs[i], label=f"EOFs={n}"))
+ax.legend(handles=labels, loc=4)
+
 
 # %%
 # Rank the mean BIC
@@ -175,6 +157,7 @@ ax.set_ylabel('# of EOFs')
 gpl.enumerate_subplots(axs, pos_x=-.2, pos_y=1.05, fontsize=10)
 
 
+
 # %%
 # BIC over number of eofs 
 # ======================================================================================
@@ -188,7 +171,6 @@ for i, n in enumerate(n_eofs):
     )
 bic = xr.concat(bic, dim=pd.Index(n_eofs, name='eof'))
 
-# %%
 # Number of parameters model 
 # ======================================================================================
 params = []
@@ -223,7 +205,7 @@ ax.set_ylabel('# of EOFs')
 # Plot log(BIC)
 ax = axs[1]
 logbic = np.log(bic)
-levels = np.linspace(np.min(logbic)-0.06, np.max(logbic), 20)
+levels = np.linspace(np.min(logbic)-0.061, np.max(logbic), 20)
 cmap = plt.get_cmap('cividis_r', len(levels) +1)
 norm = BoundaryNorm(levels, ncolors=cmap.N, extend='both')
 c = ax.pcolormesh(logbic.k, logbic.eof, logbic, norm=norm, cmap=cmap)
