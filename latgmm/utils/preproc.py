@@ -304,22 +304,27 @@ def select_months(ds, months=[12, 1, 2]):
     return ds_months
 
 
-def select_time_snippets(ds, time_snippets):
-    """Cut time snippets from dataset and concatenate them.
-ra
-    Parameters:
-    -----------
-    time_snippets: np.datetime64  (n,2)
-        Array of n time snippets with dimension (n,2).
+def select_time_snippets(ds: xr.Dataset, time_periods: np.ndarray) -> xr.Dataset:
+    """Select time periods from dataset.
+
+    Args:
+        ds (xr.Dataset or xr.Dataarray): Dataarray to select time-periods from.
+        time_periods (np.ndarray): Time periods of shape (n,2) with n time periods.
 
     Returns:
-    --------
-    xr.Dataset with concatenate times
+        xr.Dataset: Dataset with selected time periods.
     """
     ds_lst = []
-    for time_range in time_snippets:
-        ds_lst.append(ds.sel(time=slice(time_range[0], time_range[1])))
-
+    for start_time, end_time in time_periods:
+        # Check if the start and end times are within the DataArray's time range
+        if (start_time > np.min(ds.time.values)) and (end_time < np.max(ds.time.values)):
+            # Check that the start time is before the end time
+            if start_time <= end_time:
+                ds_lst.append(ds.sel(time=slice(start_time, end_time)))
+            else:
+                ValueError("Start time is after end time")
+        else:
+            continue
     ds_snip = xr.concat(ds_lst, dim='time')
 
     return ds_snip
