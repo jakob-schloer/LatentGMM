@@ -29,7 +29,6 @@ datafile = "../data/reanalysis/monthly/ssta_merged_dataset_1.nc"
 normalization = 'zscore'
 
 ds = xr.open_dataset(datafile)
-ds = ds.sel(lat=slice(-15, 15))
 
 # Normalization
 if normalization is not None:
@@ -70,7 +69,7 @@ for n_components in n_eofs:
     # ## Gaussian mixture 
     print("Scan number of cluster")
     n_classes = np.arange(1, 10, 1)
-    n_runs = 50
+    n_runs = 100
     for k in n_classes:
         for r in range(n_runs):
             gmm = mixture.GaussianMixture(n_components=k, 
@@ -95,17 +94,18 @@ for i, n in enumerate(n_eofs):
 # %%
 # Boxplots in one plot
 # ======================================================================================
-import matplotlib.patches as mpatches
-clrs = sns.color_palette('cividis', len(n_eofs))
-fig, ax = plt.subplots(1, 1, figsize=(5, 8))
-labels = []
-for i, n in enumerate(n_eofs):
-    temp = gmm_bic.loc[gmm_bic['n_eof'] == n]
-    temp['logbic'] = np.log(temp['bic'])
-    sns.boxplot(data=temp, x='k', y='logbic', ax=ax, color=clrs[i],
-                fliersize=0.0)
-    labels.append(mpatches.Patch(color=clrs[i], label=f"EOFs={n}"))
-ax.legend(handles=labels, loc=4)
+if False:
+    import matplotlib.patches as mpatches
+    clrs = sns.color_palette('cividis', len(n_eofs))
+    fig, ax = plt.subplots(1, 1, figsize=(5, 8))
+    labels = []
+    for i, n in enumerate(n_eofs):
+        temp = gmm_bic.loc[gmm_bic['n_eof'] == n]
+        temp['logbic'] = np.log(temp['bic'])
+        sns.boxplot(data=temp, x='k', y='logbic', ax=ax, color=clrs[i],
+                    fliersize=0.0)
+        labels.append(mpatches.Patch(color=clrs[i], label=f"EOFs={n}"))
+    ax.legend(handles=labels, loc=4)
 
 
 # %%
@@ -116,12 +116,12 @@ for i, n in enumerate(n_eofs):
     temp = gmm_bic.loc[gmm_bic['n_eof'] == n]
     rank_bic.append(
         xr.DataArray(
-            data=pd.DataFrame([temp.loc[temp['k']==k].median() for k in temp['k'].unique()])['bic'],
+            data=pd.DataFrame([temp.loc[temp['k']==k].mean() for k in temp['k'].unique()])['bic'],
             coords=dict(k=temp['k'].unique())
         ).rank(dim='k')
     )
 rank_bic = xr.concat(rank_bic, dim=pd.Index(n_eofs, name='eof'))
-# %%
+
 # Plot boxplots for EOF=2 and ranked BIC 
 # ======================================================================================
 fig, axs = plt.subplots(1, 2, figsize=(7, 2.5))
@@ -156,6 +156,8 @@ ax.set_ylabel('# of EOFs')
 
 gpl.enumerate_subplots(axs, pos_x=-.2, pos_y=1.05, fontsize=10)
 
+if True:
+    plt.savefig("../output/plots/pcgmm_rankbic.png", dpi=300, bbox_inches='tight')
 
 
 # %%
@@ -165,7 +167,7 @@ bic = []
 for i, n in enumerate(n_eofs):
     temp = gmm_bic.loc[gmm_bic['n_eof'] == n]
     bic.append(xr.DataArray(
-            data=pd.DataFrame([temp.loc[temp['k']==k].median() for k in temp['k'].unique()])['bic'],
+            data=pd.DataFrame([temp.loc[temp['k']==k].mean() for k in temp['k'].unique()])['bic'],
             coords=dict(k=temp['k'].unique())
         )
     )
@@ -205,7 +207,7 @@ ax.set_ylabel('# of EOFs')
 # Plot log(BIC)
 ax = axs[1]
 logbic = np.log(bic)
-levels = np.linspace(np.min(logbic)-0.061, np.max(logbic), 20)
+levels = np.linspace(np.min(logbic)-0.062, np.max(logbic), 20)
 cmap = plt.get_cmap('cividis_r', len(levels) +1)
 norm = BoundaryNorm(levels, ncolors=cmap.N, extend='both')
 c = ax.pcolormesh(logbic.k, logbic.eof, logbic, norm=norm, cmap=cmap)
@@ -217,7 +219,7 @@ ax.set_xlabel('k')
 
 gpl.enumerate_subplots(axs, pos_x=.0, pos_y=1.05, fontsize=10)
 
-
-plt.savefig("../output/plots/pcgmm_nparams_bic.png", dpi=300, bbox_inches='tight')
+if True:
+    plt.savefig("../output/plots/pcgmm_nparams_logbic.png", dpi=300, bbox_inches='tight')
 
 # %%

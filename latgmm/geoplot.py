@@ -603,16 +603,21 @@ def enumerate_subplots(axs, pos_x=-0.07, pos_y=1.04, fontsize=None):
         pos_x = [pos_x] * len(axs.flatten())
     if type(pos_y) == float:
         pos_y = [pos_y] * len(axs.flatten())
-
-    for n, ax in enumerate(axs.flatten()):
-        ax.text(
-            pos_x[n],
-            pos_y[n],
-            f"{string.ascii_uppercase[n]}" if n < 26 else f"{string.ascii_uppercase[n-26]}{string.ascii_uppercase[n-26]}.",
-            transform=ax.transAxes,
-            size=fontsize,
-            weight="bold",
-        )
+    
+    n = 0
+    for i, ax in enumerate(axs.flatten()):
+        try:
+            ax.text(
+                pos_x[i],
+                pos_y[i],
+                f"{string.ascii_uppercase[n]}" if n < 26 else f"{string.ascii_uppercase[n-26]}{string.ascii_uppercase[n-26]}.",
+                transform=ax.transAxes,
+                size=fontsize,
+                weight="bold",
+            )
+            n += 1
+        except:
+            continue
     return axs
 
 
