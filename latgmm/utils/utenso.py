@@ -957,7 +957,8 @@ def get_unweighted_composites(data_dict: dict, f_sst: str,
                               null_hypothesis: str='neutral',
                               n_samples_mean: int=100,
                               n_samples_time: int= None,
-                              serial_data: bool=False, multiple_testing: str='dunn'):
+                              serial_data: bool=False, multiple_testing: str='dunn',
+                              remove_extreme_events: bool= False):
     """Get unweighted ENSO composites for dataarray.
 
     Args:
@@ -987,6 +988,15 @@ def get_unweighted_composites(data_dict: dict, f_sst: str,
         definition=criteria, fname=f_sst, vname='sst', climatology='month',
         month_range=enso_months
     )
+    # Remove extreme events
+    if remove_extreme_events:
+        extreme_events = (
+            (enso_classes['start'] == "1982-12-01") 
+            | (enso_classes['start'] == "1997-12-01") 
+            | (enso_classes['start'] == "2015-12-01")
+            | (enso_classes['start'] == "2072-12-01")
+        )
+        enso_classes = enso_classes.loc[~extreme_events]
 
     # Null hypothesis
     if null_hypothesis == 'neutral':
@@ -1008,6 +1018,7 @@ def get_unweighted_composites(data_dict: dict, f_sst: str,
     samples_null, composite_null = [], []
 
     for var, da in data_dict.items():
+        print(f"Compute composites for {var}")
 
         # Null hypothesis
         da_null = preproc.select_time_snippets(da, time_periods_null)
