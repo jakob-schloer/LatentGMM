@@ -23,7 +23,7 @@ from latgmm.model import ae
 import latgmm.geoplot as gpl
 
 PATH = os.path.dirname(os.path.abspath(__file__))
-plt.style.use(PATH + "/../paper.mplstyle")
+plt.style.use(PATH + "/../../paper.mplstyle")
 
 # Load data
 # ======================================================================================
@@ -36,7 +36,7 @@ param = dict(
     lat_range=[-31, 32],
 )
 
-dirpath = "../data/reanalysis/monthly/"
+dirpath = "../../data/reanalysis/monthly/"
 if (param['multivar'] is False) & (len(param['variables']) == 1):
     param['filenames'] = [
         dict(name='COBE2',   path=dirpath+"/COBE/sst_cobe2_month_1850-2019.nc"),
@@ -177,7 +177,7 @@ for datapoint in data['train_loader']:
 # ======================================================================================
 param['lr'] = 0.0001
 param['postfix'] = ''
-param['path'] = "../output/ae/"
+param['path'] = "../../output/ae/"
 param['epochs'] = 50
 criterion = lambda input, target: torch.mean((input - target)**2)
 optimizer = torch.optim.Adam(model.parameters(), lr=param['lr'])

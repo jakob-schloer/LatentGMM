@@ -20,12 +20,12 @@ from latgmm.utils import utenso, preproc, eof, utdata, utstats, metric
 import latgmm.geoplot as gpl
 
 PATH = os.path.dirname(os.path.abspath(__file__))
-plt.style.use(PATH + "/../paper.mplstyle")
+plt.style.use(PATH + "/../../paper.mplstyle")
 
 # %%
 # Load data
 # ======================================================================================
-datafile = "../data/reanalysis/monthly/ssta_merged_dataset_1.nc"
+datafile = "../../data/reanalysis/monthly/ssta_merged_dataset_1.nc"
 normalization = 'zscore'
 
 ds = xr.open_dataset(datafile)
@@ -156,10 +156,6 @@ ax.set_ylabel('# of EOFs')
 
 gpl.enumerate_subplots(axs, pos_x=-.2, pos_y=1.05, fontsize=10)
 
-if True:
-    plt.savefig("../output/plots/pcgmm_rankbic.png", dpi=300, bbox_inches='tight')
-
-
 # %%
 # BIC over number of eofs 
 # ======================================================================================
@@ -218,8 +214,5 @@ ax.set_xticks(logbic['k'])
 ax.set_xlabel('k')
 
 gpl.enumerate_subplots(axs, pos_x=.0, pos_y=1.05, fontsize=10)
-
-if True:
-    plt.savefig("../output/plots/pcgmm_nparams_logbic.png", dpi=300, bbox_inches='tight')
 
 # %%
