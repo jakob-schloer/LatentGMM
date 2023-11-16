@@ -5,12 +5,16 @@ Preprint: https://arxiv.org/abs/2307.11552
 
 Low dimensional representation of SSTA fitted by a GMM: 
 
-<img src="output/img/pcgmm_representation.png" width="600"> 
+<img src="output/img/pcgmm_representation_weightedmeans.png" width="600"> 
 
 The conditional probability, $p (c_k|z(t))$, that an event $z(t)$ belongs to
 the category $c_k$:
 
 <img src="output/img/pcgmm_weights_with_legend_markers.png" width="600"> 
+
+Decadal variability:
+
+<img src="output/img/pcgmm_decadal_variability.png" width="600"> 
 
 
 ## Install
